@@ -1,4 +1,5 @@
 import json
+import sys
 import numpy as np
 import pandas as pd
 
@@ -40,24 +41,33 @@ def preprocess(data_name):
 def reindex(df):
     assert(df.u.max() - df.u.min() + 1 == len(df.u.unique()))
     assert(df.i.max() - df.i.min() + 1 == len(df.i.unique()))
+
+    # shift user indices if needed
+    if df.u.min() > 0:
+        df.u = df.u - df.u.min()
+    # shift item indices if needed
+    if df.i.min() > 0:
+        df.i = df.i - df.i.min()
+    # shift timestamps if needed
+    if df.ts.min() > 0:
+        df.ts = df.ts - df.ts.min()
     
     upper_u = df.u.max() + 1
     new_i = df.i + upper_u
     
     new_df = df.copy()
-    print(new_df.u.max())
-    print(new_df.i.max())
-    
+    print('Max user:', new_df.u.max())
+    print('Max item:', new_df.i.max())
+
     new_df.i = new_i
     new_df.u += 1
     new_df.i += 1
     new_df.idx += 1
-    
-    print(new_df.u.max())
-    print(new_df.i.max())
-    
-    return new_df
 
+    print('Max user updated:', new_df.u.max())
+    print('Max item updated:', new_df.i.max())
+
+    return new_df
 
 
 def run(data_name):
@@ -68,20 +78,23 @@ def run(data_name):
     
     df, feat = preprocess(PATH)
     new_df = reindex(df)
-    
-    print(feat.shape)
+
+    print('Edge features shape:', feat.shape)
     empty = np.zeros(feat.shape[1])[np.newaxis, :]
     feat = np.vstack([empty, feat])
-    
+    print('Edge features updated shape:', feat.shape)
+
     max_idx = max(new_df.u.max(), new_df.i.max())
     rand_feat = np.zeros((max_idx + 1, feat.shape[1]))
+    print('Node features shape:', rand_feat.shape)
     
-    print(feat.shape)
     new_df.to_csv(OUT_DF)
+    # all provided features will be edge features
     np.save(OUT_FEAT, feat)
+    # random features are used to identify nodes
     np.save(OUT_NODE_FEAT, rand_feat)
     
-    
-run('wikipedia')
-
+#run('wikipedia')
 #run('reddit')
+data_id = sys.argv[1]
+run(data_id)
