@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import sys, argparse
 
 def load_data(file_path, nrows=None):
@@ -18,30 +19,47 @@ def load_data(file_path, nrows=None):
 
 def main():
     parser = argparse.ArgumentParser(description="Load and process data from a CSV file.")
-    parser.add_argument('file_path', type=str, help='Path to the CSV file')    
+    parser.add_argument('file_path', type=str, help='Path to the CSV file')
+    parser.add_argument('--action', choices=['buy', 'sell'], default='buy', help='Action to process (default: buy)')
     parser.add_argument('--output_dir', type=str, default='./processed', help='Path to save the processed data')
-    parser.add_argument('--filename_prefix', type=str, default='soltokens', help='Prefix for the output files')
+    #parser.add_argument('--filename_prefix', type=str, default='soltokens', help='Prefix for the output files')
     parser.add_argument('--nrows', type=int, default=None, help='Number of rows to read from the file')
     parser.add_argument('--no-features', action='store_true', help='If set, do not include features in the output')
 
     args = parser.parse_args()
 
-    data = load_data(args.file_path, nrows=args.nrows)
+    data = load_data(args.file_path, nrows=args.nrows*2 if args.nrows else None)
     print(dict(data.dtypes))  # Display the data types of each column
 
-    cols = ['token', 'user', 'timestamp', 'buy', 'n_txs_so_far']
+    # Filter data based on the action
+    data = data[data['action'] == args.action].copy()
+    if args.nrows:
+        data = data.head(args.nrows)
+
+    cols = ['token', 'user', 'timestamp', 'action']
     if not args.no_features:
-        cols += ['buy_period', 'sell_period', 'time_since_last_interaction', 'avg_buy_price', 'avg_sell_price', 'avg_price', 'n_buys_so_far', 'n_sells_so_far']
-    #print(data.dtypes)  # Display the data types of each column
-    #print(data[cols])  # Display the first few rows of the dataframe
+        cols += ['n_txs_so_far', 'avg_price']
+        if args.action == 'buy':
+            cols += ['buy_period', 'avg_buy_price', 'n_buys_so_far']
+        elif args.action == 'sell':
+            cols += ['sell_period', 'avg_sell_price', 'n_sells_so_far']
+        
+    print(f"Selected columns: {cols}")
+
     if not args.output_dir:
         output_dir = ''
     else:
         output_dir = args.output_dir + '/'
-    output_fp = f"{output_dir}{args.filename_prefix}.csv"
+    #output_fp = f"{output_dir}{args.filename_prefix}.csv"
+    output_fp = f"{output_dir}{args.action}.csv"
     if args.no_features:
         output_fp = output_fp.replace('.csv', '_no_features.csv')
+    if args.nrows:
+        output_fp = output_fp.replace('.csv', f'_{args.nrows}.csv')
     selected = data[cols].copy()
+    selected['action'] = np.ones(len(selected))  # Ensure 'buy' column is present
+    selected['action'] = selected['action'].astype('int64')  # Convert to int64
+    selected.rename(columns={'action': 'label', 'token': 'i', 'user': 'u', 'timestamp': 'ts'}, inplace=True)
     for col in selected.columns:
         if selected[col].dtype == 'object':
             selected[col] = selected[col].astype('int64')

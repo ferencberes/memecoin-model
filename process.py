@@ -1,5 +1,4 @@
-import json
-import sys
+import json, sys, os
 import numpy as np
 import pandas as pd
 
@@ -72,29 +71,36 @@ def reindex(df):
 
 def run(data_name):
     PATH = './processed/{}.csv'.format(data_name)
-    OUT_DF = './processed/ml_{}.csv'.format(data_name)
-    OUT_FEAT = './processed/ml_{}.npy'.format(data_name)
-    OUT_NODE_FEAT = './processed/ml_{}_node.npy'.format(data_name)
-    
-    df, feat = preprocess(PATH)
-    new_df = reindex(df)
+    if os.path.exists(PATH):
+        OUT_DF = './processed/ml_{}.csv'.format(data_name)
+        OUT_FEAT = './processed/ml_{}.npy'.format(data_name)
+        OUT_NODE_FEAT = './processed/ml_{}_node.npy'.format(data_name)
+        
+        df, feat = preprocess(PATH)
+        new_df = reindex(df)
 
-    print('Edge features shape:', feat.shape)
-    empty = np.zeros(feat.shape[1])[np.newaxis, :]
-    feat = np.vstack([empty, feat])
-    print('Edge features updated shape:', feat.shape)
+        print('Edge features shape:', feat.shape)
+        empty = np.zeros(feat.shape[1])[np.newaxis, :]
+        feat = np.vstack([empty, feat])
+        print('Edge features updated shape:', feat.shape)
 
-    max_idx = max(new_df.u.max(), new_df.i.max())
-    rand_feat = np.zeros((max_idx + 1, feat.shape[1]))
-    print('Node features shape:', rand_feat.shape)
+        max_idx = max(new_df.u.max(), new_df.i.max())
+        rand_feat = np.zeros((max_idx + 1, feat.shape[1]))
+        print('Node features shape:', rand_feat.shape)
+        
+        new_df.to_csv(OUT_DF)
+        # all provided features will be edge features
+        np.save(OUT_FEAT, feat)
+        # random features are used to identify nodes
+        np.save(OUT_NODE_FEAT, rand_feat)
+        return True
+    else:
+        return False
     
-    new_df.to_csv(OUT_DF)
-    # all provided features will be edge features
-    np.save(OUT_FEAT, feat)
-    # random features are used to identify nodes
-    np.save(OUT_NODE_FEAT, rand_feat)
-    
-#run('wikipedia')
-#run('reddit')
-data_id = sys.argv[1]
-run(data_id)
+for action in ['buy', 'sell']:
+    for prefix in ['', '_no_features']:
+        for i in [20000, 50000]:
+            data_id = f"{action}{prefix}_{i}"
+            success = run(data_id)
+            if success:
+                print(f"Processed {data_id}")
