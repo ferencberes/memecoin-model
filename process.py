@@ -99,7 +99,7 @@ def run(data_name):
     
 for action in ['buy', 'sell']:
     for prefix in ['', '_no_features']:
-        for i in [20000, 50000]:
+        for i in [20000, 50000, 500000]:
             data_id = f"{action}{prefix}_{i}"
             success = run(data_id)
             if success:

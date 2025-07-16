@@ -63,6 +63,11 @@ def main():
     for col in selected.columns:
         if selected[col].dtype == 'object':
             selected[col] = selected[col].astype('int64')
+
+    # reindex nodes countinuously
+    selected['i'] = pd.factorize(selected['i'])[0]
+    selected['u'] = pd.factorize(selected['u'])[0]
+
     missing_rates = selected.isnull().mean()
     print("Missing rates per column:")
     print(missing_rates)
