@@ -26,7 +26,7 @@ parser.add_argument('--bs', type=int, default=200, help='batch_size')
 parser.add_argument('--prefix', type=str, default='', help='prefix to name the checkpoints')
 parser.add_argument('--n_degree', type=int, default=20, help='number of neighbors to sample')
 parser.add_argument('--n_head', type=int, default=2, help='number of heads used in attention layer')
-parser.add_argument('--n_epoch', type=int, default=50, help='number of epochs')
+parser.add_argument('--n_epoch', type=int, default=2, help='number of epochs')
 parser.add_argument('--n_layer', type=int, default=2, help='number of network layers')
 parser.add_argument('--lr', type=float, default=0.0001, help='learning rate')
 parser.add_argument('--drop_out', type=float, default=0.1, help='dropout probability')
@@ -52,7 +52,7 @@ NUM_HEADS = args.n_head
 DROP_OUT = args.drop_out
 GPU = args.gpu
 UNIFORM = args.uniform
-NEW_NODE = args.new_node
+#NEW_NODE = args.new_node
 USE_TIME = args.time
 AGG_METHOD = args.agg_method
 ATTN_MODE = args.attn_mode
@@ -136,8 +136,11 @@ random.seed(2020)
 
 total_node_set = set(np.unique(np.hstack([g_df.u.values, g_df.i.values])))
 num_total_unique_nodes = len(total_node_set)
+print("Total unique nodes:", num_total_unique_nodes)
 
-mask_node_set = set(random.sample(set(src_l[ts_l > val_time]).union(set(dst_l[ts_l > val_time])), int(0.1 * num_total_unique_nodes)))
+mask_node_set = set(random.sample(list(set(src_l[ts_l > val_time]).union(set(dst_l[ts_l > val_time]))), int(0.1 * num_total_unique_nodes)))
+print("Masked nodes for training:", len(mask_node_set))
+#alma
 mask_src_flag = g_df.u.map(lambda x: x in mask_node_set).values
 mask_dst_flag = g_df.i.map(lambda x: x in mask_node_set).values
 none_node_flag = (1 - mask_src_flag) * (1 - mask_dst_flag)
@@ -237,9 +240,9 @@ for epoch in range(NUM_EPOCH):
     np.random.shuffle(idx_list)
     logger.info('start {} epoch'.format(epoch))
     for k in range(num_batch):
-        # percent = 100 * k / num_batch
-        # if k % int(0.2 * num_batch) == 0:
-        #     logger.info('progress: {0:10.4f}'.format(percent))
+        percent = 100 * k / num_batch
+        if k % int(0.2 * num_batch) == 0:
+           logger.info('progress: {0:10.4f}'.format(percent))
 
         s_idx = k * BATCH_SIZE
         e_idx = min(num_instance - 1, s_idx + BATCH_SIZE)
@@ -247,6 +250,7 @@ for epoch in range(NUM_EPOCH):
         ts_l_cut = train_ts_l[s_idx:e_idx]
         label_l_cut = train_label_l[s_idx:e_idx]
         size = len(src_l_cut)
+        # prepare negative samples (same number of positive and negative samples)
         src_l_fake, dst_l_fake = train_rand_sampler.sample(size)
         
         with torch.no_grad():
